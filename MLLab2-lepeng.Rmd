@@ -1,0 +1,465 @@
+---
+title: "Machine Learning Lab2"
+author: "Lepeng Zhang, Xuan Wang, Priyarani Patil"
+date: "2023-11-30"
+output: 
+  pdf_document:
+    latex_engine: xelatex
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+### Statement of Contribution
+The group report was made based on the discussion after all of us had finished all three assignments. Assignment 1 was mainly contributed by Lepeng Zhang. Assignment 2 was mainly contributed by Xuan Wang. Assignment 3 was mainly contributed by Priyarani Patil.
+
+# Assignment 1. Explicit regularization
+
+```{r, Assignment1_0, echo = FALSE}
+rawdata <- read.csv("tecator.csv")
+rawdata <- rawdata[,-c(1,103:104)]
+n <- nrow(rawdata)
+set.seed(12345)
+id <- sample(1:n,floor(n*0.5))
+train <- rawdata[id,]
+test <- rawdata[-id,]
+```
+
+### Q1
+```{r, Assignment1_1, echo = FALSE}
+m1 <- lm(Fat~., data = train)
+train_pred <- predict(m1)
+test_pred <- predict(m1, test)
+
+MSE <- function(true_value, predict_value){
+  mean((true_value - predict_value)^2)
+}
+
+cat("The train MSE is:", MSE(train$Fat, train_pred), "\n")
+cat("The test MSE is:", MSE(test$Fat, test_pred), "\n")
+```
+$$\text{Fat}=\theta_0+\theta_1\times \text{Channel1} + \theta_2\times  \text{Channel2} +...+\theta_{100}\times  \text{Channel100} +\varepsilon $$
+$$\varepsilon\sim N(0,\sigma^2)$$
+The train MSE is 0.005709117 which is very close to 0 so the fit quality is great. While, the test MSE is 722.4294 which is super higher than train MSE, so the prediction quality is very poor. Based on these two facts, it can be concluded that the model has an overfitting issue.
+
+### Q2
+$$J(\theta)=\frac{1}{n}\sum_{i=1}^{n}(y_i-\theta^Tx_i)^2+\lambda\sum_{j=i}^{p}\left | \theta_j \right | $$
+$J(\theta)$ is the cost function to be minimized.      
+$n$ is the number of observations.    
+$y_i$ is the observed value for the ith observation.  
+$\theta^Tx_i$ is the predicted value for the ith observation based on the regression model.      
+$p$ is the number of features (Channels).    
+$\theta_j$ is the regression coefficient for the jth feature.  
+$\lambda$ is the regularization parameter, $\lambda>0$.  
+
+### Q3
+```{r, Assignment1_3, echo = FALSE}
+library(glmnet)
+library(dplyr)
+x=as.matrix(train%>%select(-Fat))
+y=as.matrix(train%>%select(Fat))
+model0=glmnet(x, y, alpha=1,family="gaussian")
+plot(model0, xvar="lambda", label=TRUE, main = "LASSO Regression: Coefficients vs. log(lambda)")
+abline(v = seq(-0.5, 0, by = 0.1), col = "gray", lty = 3)
+```
+It can be seen that the number of coefficients which are not equal to 0 (not include $\theta_0$ since it is never being 0) generally decreases as $\lambda$ increases. The top ticks also indicates that. Many coefficients gradually decrease to 0 in this process, like coefficients of feature 40 and 1. But this is not always the case. There are some features whose coefficients increase as $\lambda$ increases in a certain range, like feature 50 and 41. However, when $log(\lambda)>1.8(approx.)$, all coefficients become 0.          
+Besides, it can be roughly seen by the dot lines that when $-0.4<log(\lambda)<-0.1$, there are only three coefficients which are not equal to 0. Therefore, this range should be studied in detail.  
+
+```{r, Assignment1_3_1, echo = FALSE}
+
+store_list <- list()
+lambda_range <- exp(seq(-0.5,0,by = 0.01))
+for (i in 1:length(lambda_range)){
+  store_list$log_lambda[i] <- log(lambda_range[i])
+  m2 <- glmnet(x, y, family="gaussian", lambda = lambda_range[i], alpha=1)
+  store_list$num_feature[i] <- sum(coef(m2) != 0) - 1
+}
+plot(store_list$log_lambda, store_list$num_feature, xlab = expression(log(lambda)), ylab = "Number of coefficients", main = "LASSO Regression: Coefficients vs. log(lambda)")
+abline(h = 3, col = "red", lty = 2)
+abline(v = c(-0.38, -0.11), col = "red", lty = 2)
+text(-0.38, 1, "-0.38", pos = 2, col = "red")  
+text(-0.11, 1, "-0.11", pos = 2, col = "red") 
+```
+
+The above plot represents the relationship between $log(\lambda)$ and the number of coefficients (not include $\theta_0$) in the small range mentioned before. It can be found that when $-0.38<log(\lambda)<-0.11$, there are only three features contributing the model. So, the value of $\lambda$ should be chosen in $\left [ e^{-0.38},  e^{-0.11} \right ]\approx \left [ 0.684,  0.895 \right ]$. 
+
+### Q4
+```{r, Assignment1_4, echo = FALSE}
+model1=glmnet(x, y, alpha=0,family="gaussian")
+plot(model1, xvar="lambda", label=TRUE, main = "Ridge Regression: Coefficients vs. log(lambda)")
+```
+In ridge regression, all coefficients gradually become close to 0 as $\lambda$ increases but they never equal to 0. The number of features contributing the model remains 100 in spite of $\lambda$ becomes extremely large. The top ticks indicates this. Besides, the development curves for coefficients in ridge regression are much smoother than their counterparts in LASSO regression. Therefore, one conclusion can be drawn here:          
+Lasso regression can automatically delete the insignificant features by setting their coefficients to 0, while ridge regression does not do this since it would set these coefficients to a very tiny value but never to 0.
+ 
+### Q5
+```{r, Assignment1_5, echo = FALSE}
+model5 <- cv.glmnet(x, y, alpha = 1, family = "gaussian")
+plot(model5, main = "Cross-Validation Score vs. log(lambda)", xlab = expression(log(lambda)))
+abline(v = 0, col = "red", lty = 2)
+cat("Optimal lambda:", model5$lambda.min, "\n")
+cat("Variable number (not include intercept) for the model with optimal lambda:", model5$nzero[which.min(model5$cvm)]-1, "\n")
+```
+It can be seen in the above plot that as $log(\lambda)$ increases up to -3, MSE stays basically still. After that, MSE gradually increases with a more and more fast rate until $log(\lambda) \approx 0$. Afterwards, MSE continuously increases but with a much slower speed than before. While, the increasing rate increases as $log(\lambda)$ increases.  
+Just from the plot it cannot be concluded that the optimal $\lambda$ value results in a statistically significantly better prediction than $log(\lambda)=-4$ since their MSEs are basically the same.  
+
+```{r, Assignment1_5_1, echo = FALSE}
+
+m3 <- glmnet(x, y, family="gaussian", lambda = model5$lambda.min, alpha=1)
+x_test <- as.matrix(test%>%select(-Fat))
+predictions <- predict(m3, newx = x_test)
+plot(test$Fat, predictions, main = "Original Test vs. Predicted Values",
+     xlab = "Original Test Values", ylab = "Predicted Values")
+abline(a = 0, b = 1, col = "red", lty = 2)
+cat("The test MSE of the LASSO regression model with lambda is 0.0574:", MSE(test$Fat, predictions), "\n")
+```
+The red dash line in the plot represents where original values are equal to predicted values. The points are gathering around the line, indicating a good prediction quality. Besides, the new test MSE (13.2998) is significantly smaller than the test MSE obtained by linear regression without regularization which is 722.4294. 
+
+# Assignment 2. Decision trees and logistic regression for bank marketing  
+### Q1  
+```{r, Assignment2_1, echo = FALSE, message=FALSE}
+rawdata <- read.csv("bank-full.csv", stringsAsFactors = TRUE)
+library(dplyr)
+rawdata <- rawdata %>% select(-duration)
+n <- nrow(rawdata)
+set.seed(12345)
+id <- sample(1:n,floor(n*0.4))
+train <- rawdata[id,]
+id1 <- setdiff(1:n,id)
+set.seed(12345)
+id2 <- sample(id1,floor(n*0.3))
+id3 <- setdiff(id1,id2)
+valid <- rawdata[id2,]
+test <- rawdata[id3,]
+```
+
+### Q2
+```{r, Assignment2_2, echo = FALSE}
+library(tree)
+library(rpart)
+tree_a <- tree(y~., data = train)
+tree_b <- tree(y~., data = train, control = tree.control(nrow(train), minsize = 7000))
+tree_c <- tree(y~., data = train, control = tree.control(nrow(train), mindev = 0.0005))
+
+model_set <- list(tree_a, tree_b, tree_c)
+store_list <- list()
+for (i in 1:length(model_set)){
+  Predict_train=predict(model_set[[i]], newdata=train, type = "class")
+  table_train <- table(train$y, Predict_train)
+  store_list$train_error[i] <- 1-sum(diag(table_train))/sum(table_train)
+  
+  Predict_valid=predict(model_set[[i]], newdata=valid, type = "class")
+  table_valid <- table(valid$y, Predict_valid)
+  store_list$valid_error[i] <- 1-sum(diag(table_valid))/sum(table_valid)
+}
+store_df <- as.data.frame(store_list)
+rownames(store_df) <- c("tree_a","tree_b","tree_c")
+store_df
+```
+
+Decision trees with default settings *tree_a* and with smallest allowed node size equal to 7000 *tree_b* have the same misclassification rates for the training and validation data. While decision tree with minimum deviance to 0.0005 *tree_c* has a smaller train_error and a larger valid_error. This indicates that model *tree_c* has an overfitting problem.    
+Setting a smaller allowed node size or a smaller deviation results in a larger tree with more nodes. explain why.  
+
+### Q3
+```{r, Assignment2_3, echo = FALSE}
+max_num <- 50
+trainScore=rep(0,max_num)
+validScore=rep(0,max_num)
+for(i in 2:max_num) {
+  prunedTree=prune.tree(tree_c, best=i)
+  pred=predict(prunedTree, newdata=valid, type="tree")
+  trainScore[i]=deviance(prunedTree)
+  validScore[i]=deviance(pred)
+}
+plot(2:max_num, trainScore[2:max_num], type="b", col="red", ylim=c(8000,12000), xlab="Number of leaves", ylab="Deviances", main="Deviances vs. #Leaves")
+points(2:max_num, validScore[2:max_num], type="b", col="blue")
+legend("topright", legend = c("Train", "Valid"), col = c("red", "blue"), pch = 1, bty = "n")
+abline(v = seq(2, max_num, by = 1), col = "lightgray", lty = 3, lwd = 0.5)
+abline(h = seq(8000, 12000, by = 500), col = "lightgray", lty = 3, lwd = 0.5)
+axis(1, at = seq(2, max_num, by = 2), labels = F, tick = TRUE)
+
+optimal_size <- which.min(validScore[2:max_num])
+cat("The optimal number of leaves is", optimal_size,"\n")
+```
+
+```{r, Assignment2_3_1, echo = FALSE}
+
+finalTree=prune.tree(tree_c, best=optimal_size)
+summary(finalTree)
+```
+### Q4
+```{r, Assignment2_4, echo = FALSE}
+test_pred <- predict(finalTree, newdata=test, type="class")
+con_table <- table(test$y,test_pred)
+cat("The confusion matrix for the test data:","\n")
+con_table
+cat("The accuracy for the test data:",sum(diag(con_table))/sum(con_table),"\n")
+TP <- con_table[2,2]
+FP <- con_table[1,2]
+FN <- con_table[2,1]
+recall <- TP/(TP+FN)
+precision <- TP/(TP+FP)
+F1 <- 2*recall*precision/(recall+precision)
+cat("The F1-score for the test data:",F1,"\n")
+```
+
+This is an imbalanced classes problem since the number of target value "no" (11979) is 7.56 times larger than "yes“ (1585) in the test data. So the accuracy would be 0.883 even if classifying all to "no" which doesn't prove it's a good model. That's why F1-score is a better metric here and the model does a poor prediction work with just a 0.285 F1-score.   
+
+### Q5
+```{r, Assignment2_5, echo = FALSE}
+Probs=predict(finalTree, newdata=test)
+Losses=Probs%*%matrix(c(1,0,0,5), nrow=2)
+bestI=apply(Losses, MARGIN=1, FUN = which.max)
+Pred=levels(test$y)[bestI]
+con_table <- table(test$y,Pred)
+
+cat("The confusion matrix for the test data:","\n")
+con_table
+cat("The accuracy for the test data:",sum(diag(con_table))/sum(con_table),"\n")
+TP <- con_table[2,2]
+FP <- con_table[1,2]
+FN <- con_table[2,1]
+recall <- TP/(TP+FN)
+precision <- TP/(TP+FP)
+F1 <- 2*recall*precision/(recall+precision)
+cat("The F1-score for the test data:",F1,"\n")
+```
+
+The F1-score increases from 0.285 to 0.486 after using loss matrix, indicating a better predict ability. This is achieved by loss matrix which multiplies the probability of the model predicting "yes" by five. Therefore, the number of cases predicted as "yes" increases. Specifically, only 458 cases were predicted as "yes" in Step 4 results and the number increased to 1763 in Step 5 results. And the value of $TP$ increased from 291 to 814 correspondingly. 
+
+### Q6
+```{r, Assignment2_6, echo = FALSE}
+PI <- seq(0.05, 0.95, by = 0.05)
+Prob_tree=predict(finalTree, newdata=test)
+
+m1=glm(y~., data=train, family="binomial")
+Prob_lr_yes=predict(m1, newdata = test, type="response")
+
+TPR_compute <- function(true_value, pred_value){
+  con_table <- table(true_value, pred_value)
+  TP <- ifelse(ncol(con_table)==2,con_table[2,2],0)
+  FN <- con_table[2,1]
+  return(TP/(TP+FN))
+}
+FPR_compute <- function(true_value, pred_value){
+  con_table <- table(true_value, pred_value)
+  FP <- ifelse(ncol(con_table)==2,con_table[1,2],0)
+  TN <- con_table[1,1]
+  return(FP/(FP+TN))
+}
+
+tree_list <- list()
+lr_list <- list()
+
+for (i in 1:length(PI)){
+  tree_pred <- ifelse(Prob_tree[,2]>PI[i], "yes", "no")
+  tree_list$FPR[i] <- FPR_compute(test$y, tree_pred)
+  tree_list$TPR[i] <- TPR_compute(test$y, tree_pred)
+  
+  lr_pred <- ifelse(Prob_lr_yes>PI[i], "yes", "no")
+  lr_list$FPR[i] <- FPR_compute(test$y, lr_pred)
+  lr_list$TPR[i] <- TPR_compute(test$y, lr_pred)
+}
+```
+
+
+```{r, Assignment2_6_1, echo = FALSE}
+
+plot(tree_list$FPR, tree_list$TPR, type = "l", col = "blue", lty = 1, lwd = 2, xlab = "FPR", ylab = "TPR", main = "ROC curves")
+lines(lr_list$FPR, lr_list$TPR, col = "red", lty = 2, lwd = 2)
+legend("bottomright", legend = c("Optimal tree", "Logistic regression model"), col = c("blue", "red"), lty = c(1, 2), lwd = 2)
+```
+
+
+
+# Assignment 3. Principal components and implicit regularization         
+### Q1
+```{r, Assignment3_1, echo = FALSE, message=FALSE}
+rawdata <- read.csv("communities.csv")
+library(caret)
+rawdata$ViolentCrimesPerPop <- c()
+scaler <- preProcess(rawdata)
+x_scaled <- predict(scaler,rawdata)
+
+X <- apply(x_scaled, 2, function(x) x - mean(x))
+S <- t(X)%*%X/nrow(X)
+lambda <- eigen(S)$values
+proportion_variation <- lambda/sum(lambda)*100
+
+sum <- 0
+i <- 0
+while(sum<95){
+  i <- i + 1
+  sum <- sum + proportion_variation[i]
+}
+
+cat(i, "components are needed.\n")
+cat("The proportion of variances of the first two components are", round(proportion_variation[1],3),"% and", round(proportion_variation[2],3),"% respectively.\n")
+```
+### Q2
+```{r, Assignment3_2, echo = FALSE, message=FALSE}
+res=prcomp(x_scaled)
+U= res$rotation
+plot(U[,1], main="Traceplot, PC1")
+cat("5 features contribute mostly (by the absolute value) to the first principle component:\n")
+rownames(head(U[order(-abs(U[,1])), ],5))
+```
+medFamInc: median family income  
+medIncome: median household income  
+PctKids2Par: percentage of kids in family housing with two parents  
+pctWInvInc: percentage of households with investment / rent income in 1989  
+PctPopUnderPov: percentage of people under the poverty level  
+
+
+```{r, Assignment3_2_1, echo = FALSE, message=FALSE}
+
+library(ggplot2)
+res_df <- as.data.frame(res$x)
+d1 <- read.csv("communities.csv")
+
+ggplot(res_df, aes(x = PC1, y = PC2, color = d1$ViolentCrimesPerPop)) +
+  geom_point(size = 2) +
+  scale_color_gradient(low = "black", high = "green") + 
+  labs(title = "PC Scores with ViolentCrimesPerPop",
+       x = "PC 1",
+       y = "PC 2") +
+  theme_minimal()
+```
+
+
+
+
+### Q3
+```{r, Assignment3_3, echo = FALSE, message=FALSE}
+rawdata <- read.csv("communities.csv")
+n <- nrow(rawdata)
+set.seed(12345)
+id <- sample(1:n, floor(n*0.5))
+train <- rawdata[id,]
+test <- rawdata[-id,]
+scaler <- preProcess(train)
+trainS <- predict(scaler,train)
+testS <- predict(scaler,test)
+
+MSE <- function(true_value, predict_value){
+  mean((true_value - predict_value)^2)
+}
+
+m1 <- lm(ViolentCrimesPerPop~.,trainS)
+train_error <- MSE(trainS$ViolentCrimesPerPop, predict(m1))
+test_error <- MSE(testS$ViolentCrimesPerPop, predict(m1,testS))
+cat("Train and test MSEs are",train_error,"and",test_error,"repectively.\n")
+```
+The model may have an over-fitting problem since the test MSE is much larger than the train MSE.    
+
+### Q4
+```{r, Assignment3_4, echo = FALSE, message=FALSE}
+train_MSE <- numeric()
+test_MSE <- numeric()
+
+train_cost_function <- function(theta_vector){
+  train_mse <- MSE(trainS$ViolentCrimesPerPop,as.matrix(trainS[,-length(trainS)])%*%theta_vector)
+  train_MSE <<- c(train_MSE, train_mse)
+  return(train_mse)
+}
+test_cost_function <- function(theta_vector){
+  test_mse <- MSE(testS$ViolentCrimesPerPop,as.matrix(testS[,-length(testS)])%*%theta_vector)
+  test_MSE <<- c(test_MSE, test_mse)
+  return(test_mse)
+}
+
+theta_vector_0 <- rep(0, ncol(trainS)-1)
+max_iteration <- 300000
+m2 <- optim(theta_vector_0, train_cost_function, "BFGS", control = list(maxit = max_iteration))
+m3 <- optim(theta_vector_0, test_cost_function, "BFGS", control = list(maxit = max_iteration))
+
+start_iteration <- 1001
+plot(start_iteration:length(train_MSE), train_MSE[start_iteration:length(train_MSE)], type = "l", xlab = "Iteration", ylab = "Mean Squared Error",
+     main = "MSE on Each Iteration", col = "blue")
+lines((start_iteration:length(test_MSE)), test_MSE[start_iteration:length(test_MSE)], type = "l", col = "red")
+legend("topright", legend = c("Train MSE", "Test MSE"), col = c("blue", "red"), lty = 1)
+cat("The optimal iteration number is",m3$counts[1],"\n")
+com_df <- data.frame(train_MSE=c(train_error, m2$value), test_MSE=c(test_error, m3$value))
+rownames(com_df) <- c("Step 3","Step 4")
+com_df
+```
+
+
+# Appendix  
+## Code for Assignment 1  
+```{r ref.label=c('Assignment1_0'), echo=TRUE, eval=FALSE}
+
+```
+### Q1
+```{r ref.label=c('Assignment1_1'), echo=TRUE, eval=FALSE}
+
+```
+
+### Q3
+```{r ref.label=c('Assignment1_3, Assignment1_3_1'), echo=TRUE, eval=FALSE}
+
+```
+### Q4
+```{r ref.label=c('Assignment1_4'), echo=TRUE, eval=FALSE}
+
+```
+### Q5
+```{r ref.label=c('Assignment1_5, Assignment1_5_1'), echo=TRUE, eval=FALSE}
+
+```
+
+## Code for Assignment 2
+### Q1
+```{r ref.label=c('Assignment2_1'), echo=TRUE, eval=FALSE}
+
+```
+
+### Q2
+```{r ref.label=c('Assignment2_2'), echo=TRUE, eval=FALSE}
+
+```
+
+### Q3
+```{r ref.label=c('Assignment2_3, Assignment2_3_1'), echo=TRUE, eval=FALSE}
+
+```
+
+
+### Q4
+```{r ref.label=c('Assignment2_4'), echo=TRUE, eval=FALSE}
+
+```
+
+
+### Q5
+```{r ref.label=c('Assignment2_5'), echo=TRUE, eval=FALSE}
+
+```
+
+
+### Q6
+```{r ref.label=c('Assignment2_6, Assignment2_6_1'), echo=TRUE, eval=FALSE}
+
+```
+
+## Code for Assignment 3
+### Q1
+```{r ref.label=c('Assignment3_1'), echo=TRUE, eval=FALSE}
+
+```
+
+### Q2
+```{r ref.label=c('Assignment3_2, Assignment3_2_1'), echo=TRUE, eval=FALSE}
+
+```
+
+### Q3
+```{r ref.label=c('Assignment3_3'), echo=TRUE, eval=FALSE}
+
+```
+
+### Q4
+```{r ref.label=c('Assignment3_4'), echo=TRUE, eval=FALSE}
+
+```
+
