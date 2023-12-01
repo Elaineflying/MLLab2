@@ -1,0 +1,92 @@
+---
+title: "Machine Learning Block1 Lab2"
+author: "Lepeng Zhang, Xuan Wang, Priyarani Patil"
+date: "2023-11-24"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+The group report was made based on the discussion after all of us had finished all three assignments. 
+
+Assignment 1 was mainly contributed by Priyarani Patil & Lepeng Zhang. 
+
+Assignment 2 was mainly contributed by Xuan Wang & Lepeng Zhang. 
+
+# Assignment 1. Explicit regularization
+### Q1
+See appendix.
+```{r, er1, echo = FALSE}
+
+```
+
+
+### Q2
+See appendix.
+```{r, er2, echo = FALSE}
+
+```
+
+### Q3
+See appendix.
+```{r, er3, echo = FALSE}
+
+```
+
+### Q4
+See appendix.
+```{r, er4, echo = FALSE}
+
+```
+
+
+# Assignment 2. Decision trees and logistic regression for bank marketing
+
+### Q1
+See appendix.
+```{r, tree1, echo = FALSE}
+
+```
+
+# Assignment 3. Principal components and implicit regularization
+
+### Q1
+See appendix.
+```{r, pca1, echo = FALSE}
+
+```
+
+
+# Appendix
+## Code for Assignment 1
+### Q1
+```{r ref.label=c('er1'), echo=TRUE, eval=FALSE}
+
+```
+
+### Q2
+```{r ref.label=c('er2'), echo=TRUE, eval=FALSE}
+
+```
+
+
+### Q3
+```{r ref.label=c('er3'), echo=TRUE, eval=FALSE}
+
+```
+
+
+### Q4
+```{r ref.label=c('er4'), echo=TRUE, eval=FALSE}
+
+```
+
+
+## Code for Assignment 2
+### Q1
+```{r ref.label=c('tree1'), echo=TRUE, eval=FALSE}
+
+```
+
