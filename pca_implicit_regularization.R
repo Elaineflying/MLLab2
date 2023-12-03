@@ -1,5 +1,6 @@
 # Load required library
 library(ggplot2)
+library(caret)
 
 # Load the data
 crime_data <- read.csv("communities.csv")
@@ -21,7 +22,7 @@ variance_first_two <- cumulative_variance[1:2]
 cat("Number of components needed for at least 95% variance:", components_needed, "\n")
 cat("Proportion of variation explained by each of the first two principal components:\n")
 cat("PC1:", variance_first_two[1], "\n")
-cat("PC2:", variance_first_two[2], "\n")
+cat("PC2:", variance_first_two[2]-variance_first_two[1], "\n")
 
 
 
@@ -29,14 +30,17 @@ cat("PC2:", variance_first_two[2], "\n")
 pca_res <- princomp(data_scaled)
 
 # Trace plot of the first principal component
-trace_plot <- plot(pca_res$scores[,1])
+# plot(pca_res)
+
+trace_plot <- plot(pca_res$loadings[,1])
+print(trace_plot)
 
 # Features contributing to the first principal component
-top_5_features <- sort(abs(pca_res$loadings[, 1]),decreasing = TRUE)[1:5]
+top_5_features <- sort(abs(pca_res$loadings[, 1]), decreasing = TRUE)[1:5]
 
 # Print the top 5 contributing features
 cat("Top 5 features contributing mostly to the first principal component:\n")
-cat(top_5_features, "\n")
+print(top_5_features)
 
 # Plot PC scores in coordinates (PC1, PC2) with color given by ViolentCrimesPerPop
 pc_scores <- predict(pca_res)
@@ -44,6 +48,7 @@ response <- crime_data$ViolentCrimesPerPop
 
 ggplot(data.frame(PC1 = pc_scores[, 1], PC2 = pc_scores[, 2], CrimeLevel = response), aes(x = PC1, y = PC2, color = CrimeLevel)) +
   geom_point() +
+  scale_color_gradient(low = "orange", high = "green") +
   labs(title = "PC Scores Plot", x = "PC1", y = "PC2")
 
 
@@ -54,22 +59,23 @@ id=sample(1:n, floor(n*0.5))
 train_data=crime_data[id,]
 test_data=crime_data[-id,]
 
+# Use preProcess to scale the data and obtain a scaling model
+scaling_model <- preProcess(train_data, method = c("center", "scale"))
 
-# Scale features and response
-scaled_train_features <- scale(train_data[, -which(names(train_data) == "ViolentCrimesPerPop")])
-scaled_test_features <- scale(test_data[, -which(names(test_data) == "ViolentCrimesPerPop")])
-scaled_train_response <- scale(train_data$ViolentCrimesPerPop)
-scaled_test_response <- scale(test_data$ViolentCrimesPerPop)
+# Apply the scaling to both training and test sets
+scaled_train_data <- predict(scaling_model, train_data)
+scaled_test_data <- predict(scaling_model, test_data)
+
 
 # Fit linear regression model
-lm_model <- lm(scaled_train_response ~ scaled_train_features)
+lm_model <- lm(scaled_train_data$ViolentCrimesPerPop ~ ., data = scaled_train_data)
 
 # Compute training and test errors
-train_pred <- predict(lm_model, newdata = as.data.frame(scaled_train_features))
-test_pred <- predict(lm_model, newdata = as.data.frame(scaled_test_features))
+train_pred <- predict(lm_model, newdata = scaled_train_data)
+test_pred <- predict(lm_model, newdata = scaled_test_data)
 
-train_error <- mean((scaled_train_response - train_pred)^2)
-test_error <- mean((scaled_test_response - test_pred)^2)
+train_error <- mean((scaled_train_data$ViolentCrimesPerPop - train_pred)^2)
+test_error <- mean((scaled_test_data$ViolentCrimesPerPop - test_pred)^2)
 
 # Print the results
 cat("Training Error:", train_error, "\n")
@@ -83,15 +89,13 @@ cost_function <- function(theta, X, y) {
   return(cost)
 }
 
-# Optimize using BFGS method
-theta_initial <- rep(0, ncol(scaled_train_features))
-optim_result <- optim(par = theta_initial, fn = cost_function, X = scaled_train_features, y = scaled_train_response, method = "BFGS")
-
-# Extract optimal theta
-optimal_theta <- optim_result$par
 
 # Compute training and test errors for every iteration
 max_iter <- 1000
+scaled_train_features <- as.matrix(scaled_train_data[, -which(names(train_data) == "ViolentCrimesPerPop")])
+scaled_test_features <- as.matrix(scaled_test_data[, -which(names(test_data) == "ViolentCrimesPerPop")])
+scaled_train_response <- scaled_train_data$ViolentCrimesPerPop
+scaled_test_response <- scaled_test_data$ViolentCrimesPerPop
 training_errors <- numeric(length = max_iter)
 test_errors <- numeric(length = max_iter)
 theta_i <- rep(0, ncol(scaled_train_features))

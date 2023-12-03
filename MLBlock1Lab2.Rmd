@@ -24,22 +24,69 @@ See appendix.
 
 
 ### Q2
-See appendix.
+The cost function for LASSO regression is give by:
+$$Cost(\beta )= \frac{1}{2N}\sum_{i=1}^{N}\left ( y_{i} - \hat{y_{i}} \right ) ^{2} + \lambda \sum_{j=i}^{p}\left | \beta _{j} \right |$$
+Where N is the number of observations;
+
+$y_{i}$ is the actual response for observation i;
+
+$\hat{y_{i}}$ is the predicted response for observation i;
+
+$\beta _{j}$ is the coefficient for the j-th predictor;
+
+$p$ is the numbber of predictors;
+
+$\lambda$ is the uning parameter that controls the strength of the penalty.
+
+
+
 ```{r, er2, echo = FALSE}
 
 ```
 
 ### Q3
-See appendix.
+
+In LASSO regression, the tuning parameter $\lambda$ controls the strength of the penalty on the absolute values of the coefficients. As $\lambda$ increases, the penalty becomes more severe, and coefficients are more likely to be pushed to zeor, leading to feature selection.
+
+It can be seen from the plot, with increasing $log(\lambda)$, the coefficients generally decrease in magnitude. At some point, certain coefficients will cross zero and become exactly zero. the corresponding features are effectively excluded from the model. At same time, some coefficients shows increase at some periods, this is because at lower values of $\lambda$, the model is more focused on fitting the training data well, and the penalty for complex models is not strong enough to encourage sparsity. As $\lambda$ increases, the penalty term becomes more influential, leading to the decrease in the coefficients.
+
+The point where coefficients start to decrease and eventually become zero is crucial for feature selection. It indicates the level of regularization where model begins to prioritize simplicity over fitting the training data precisely. The shape of the plot reflects the trade-off between model complexity and goodness of fit.
+
+To choose a penalty factor for a model with only three features, we could look for the plot and find out when the $log(\lambda) = -0.1$ there are only 3 corresponding features left.
+
+
+Channel6    -11.663550
+Channel7     -4.071505
+Channel41    22.279384
+
 ```{r, er3, echo = FALSE}
 
 ```
 
 ### Q4
-See appendix.
+
+LASSO plot:
+Some coefficients will increase firstly then decrease, and eventually become exactly zero, leading to sparsity.
+LASSO is for feature selection.
+
+
+Ridge plot:
+Coefficients generally decrease as lambda increases.
+Ridge does not result in exactly zero coefficients, it shrinks coefficients towards zero but doesn't eliminate them.
+Ridge tends to shrink all coefficients simultaneously, and no feature selection occurs.
+
 ```{r, er4, echo = FALSE}
 
 ```
+
+### Q5
+
+From the plot, the optimal lambda(log(opt_lambda) = -2.856921) is not significantly better than log(lambda) = -4, their mean-square error are nearly close.
+
+```{r, er5, echo = FALSE}
+
+```
+
 
 
 # Assignment 2. Decision trees and logistic regression for bank marketing

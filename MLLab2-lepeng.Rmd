@@ -44,6 +44,8 @@ $$\varepsilon\sim N(0,\sigma^2)$$
 The train MSE is 0.005709117 which is very close to 0 so the fit quality is great. While, the test MSE is 722.4294 which is super higher than train MSE, so the prediction quality is very poor. Based on these two facts, it can be concluded that the model has an overfitting issue.
 
 ### Q2
+
+The cost function for LASSO regression is give by:
 $$J(\theta)=\frac{1}{n}\sum_{i=1}^{n}(y_i-\theta^Tx_i)^2+\lambda\sum_{j=i}^{p}\left | \theta_j \right | $$
 $J(\theta)$ is the cost function to be minimized.      
 $n$ is the number of observations.    
@@ -63,7 +65,9 @@ model0=glmnet(x, y, alpha=1,family="gaussian")
 plot(model0, xvar="lambda", label=TRUE, main = "LASSO Regression: Coefficients vs. log(lambda)")
 abline(v = seq(-0.5, 0, by = 0.1), col = "gray", lty = 3)
 ```
-It can be seen that the number of coefficients which are not equal to 0 (not include $\theta_0$ since it is never being 0) generally decreases as $\lambda$ increases. The top ticks also indicates that. Many coefficients gradually decrease to 0 in this process, like coefficients of feature 40 and 1. But this is not always the case. There are some features whose coefficients increase as $\lambda$ increases in a certain range, like feature 50 and 41. However, when $log(\lambda)>1.8(approx.)$, all coefficients become 0.          
+It can be seen that the number of coefficients which are not equal to 0 (not include $\theta_0$ since it is never being 0) generally decreases as $\lambda$ increases. The top ticks also indicates that. Many coefficients gradually decrease to 0 in this process, like coefficients of feature 40 and 1. But this is not always the case. There are some features whose coefficients increase as $\lambda$ increases in a certain range, like feature 50 and 41. However, when $log(\lambda)>1.8(approx.)$, all coefficients become 0. This behavior is because at lower values of $\lambda$, the model is more focused on fitting the training data well, and the penalty for complex models is not strong enough to encourage sparsity. As $\lambda$ increases, the penalty term becomes more influential, leading to the decrease in the coefficients.
+
+
 Besides, it can be roughly seen by the dot lines that when $-0.4<log(\lambda)<-0.1$, there are only three coefficients which are not equal to 0. Therefore, this range should be studied in detail.  
 
 ```{r, Assignment1_3_1, echo = FALSE}
@@ -100,7 +104,7 @@ abline(v = 0, col = "red", lty = 2)
 cat("Optimal lambda:", model5$lambda.min, "\n")
 cat("Variable number (not include intercept) for the model with optimal lambda:", model5$nzero[which.min(model5$cvm)]-1, "\n")
 ```
-It can be seen in the above plot that as $log(\lambda)$ increases up to -3, MSE stays basically still. After that, MSE gradually increases with a more and more fast rate until $log(\lambda) \approx 0$. Afterwards, MSE continuously increases but with a much slower speed than before. While, the increasing rate increases as $log(\lambda)$ increases.  
+It can be seen from the above plot that as $log(\lambda)$ increases up to -3, MSE stays basically still. After that, MSE gradually increases with a more and more fast rate until $log(\lambda) \approx 0$. Afterwards, MSE continuously increases but with a much slower speed than before. While, the increasing rate increases as $log(\lambda)$ increases.  
 Just from the plot it cannot be concluded that the optimal $\lambda$ value results in a statistically significantly better prediction than $log(\lambda)=-4$ since their MSEs are basically the same.  
 
 ```{r, Assignment1_5_1, echo = FALSE}
@@ -274,7 +278,7 @@ legend("bottomright", legend = c("Optimal tree", "Logistic regression model"), c
 
 # Assignment 3. Principal components and implicit regularization         
 ### Q1
-```{r, Assignment3_1, echo = FALSE, message=FALSE}
+```{r message=FALSE, Assignment3_1, echo=FALSE}
 rawdata <- read.csv("communities.csv")
 library(caret)
 rawdata$ViolentCrimesPerPop <- c()
@@ -304,12 +308,10 @@ plot(U[,1], main="Traceplot, PC1")
 cat("5 features contribute mostly (by the absolute value) to the first principle component:\n")
 rownames(head(U[order(-abs(U[,1])), ],5))
 ```
-medFamInc: median family income  
-medIncome: median household income  
-PctKids2Par: percentage of kids in family housing with two parents  
-pctWInvInc: percentage of households with investment / rent income in 1989  
-PctPopUnderPov: percentage of people under the poverty level  
 
+It can be seen from the trace plot that many loading values(in absolute terms) are quite high, it indicates that many features have a strong influence on the first principal component.
+
+According to the identified top5 features, they indeed share some common characteristics. Median family income, median household income, percentage of kids in family housing with two parents, percentage of households with investment/rent income, percentage of people under the poverty level, all these features related to the family finances, it suggests that family income and cost might influence crime levels. This is also logically aligned. For example, one of the top features is poverty level, it could make sense as higher percentage of people under poverty levels might have higher crime rates.
 
 ```{r, Assignment3_2_1, echo = FALSE, message=FALSE}
 
@@ -326,8 +328,7 @@ ggplot(res_df, aes(x = PC1, y = PC2, color = d1$ViolentCrimesPerPop)) +
   theme_minimal()
 ```
 
-
-
+From the plot of the PC scores, it can be clearly seen that PC1 typically captures the most significant source of variation, and PC2 captures the second most significant. With PC1 increase, the crime levels also gradually increase (the color across the PC1 axes are clearly changed from dark (0) to green (1)). While, PC2 are second significant as with PC2 increase the color across the PC2 axes are not changed significantly from dark to green.
 
 ### Q3
 ```{r, Assignment3_3, echo = FALSE, message=FALSE}
@@ -383,7 +384,7 @@ com_df <- data.frame(train_MSE=c(train_error, m2$value), test_MSE=c(test_error, 
 rownames(com_df) <- c("Step 3","Step 4")
 com_df
 ```
-
+According to above R plots and results, it can be seen that both training error and testing error decrease with the iteration numbers increase, while the testing error stops at the iteration number 25928. It suggests that after 259289 iteration, the test error reaches to the optimal value with 0.3384, which is way smaller than that computed from the step3. At same time, the optimal training error get a little bit larger. However, after optimization, the difference between training error and testing error become to 0.054, much smaller than that(0.150) computed from step3. It indicates that optimized theta contributes the model to be less overfitting, leading to a better model. 
 
 # Appendix  
 ## Code for Assignment 1  

@@ -5,6 +5,7 @@ library(caret)
 library(rattle)
 library(rpart.plot)
 library(RColorBrewer)
+library(tree)
 
 # Import data set
 bank_data <- read.csv('bank-full.csv', header = TRUE, sep = ';')
@@ -105,12 +106,12 @@ accuracy_score <- cm_test$overall["Accuracy"]
 # Compute the F1 score
 # precision = TP / (TP + FP) ---- "Pos Pred Value"
 # recall = TP / (TP + FN) ---- "Sensitivity"
-# precision <- cm_test$table[[1,1]] / (cm_test$table[[1,1]] + cm_test$table[[1,2]])
-# recall <- cm_test$table[[1,1]] / (cm_test$table[[1,1]] + cm_test$table[[2,1]])
-# f1_score = 2 * (precision * recall) / (precision + recall)
-precision_score <- cm_test$byClass["Pos Pred Value"]
-recall_score <- cm_test$byClass["Sensitivity"]
-f1_score <- 2 * (cm_test$byClass["Sensitivity"] * cm_test$byClass["Pos Pred Value"]) / (cm_test$byClass["Sensitivity"] + cm_test$byClass["Pos Pred Value"])
+ precision <- cm_test$table[[1,1]] / (cm_test$table[[1,1]] + cm_test$table[[2,1]])
+ recall <- cm_test$table[[2,2]] / (cm_test$table[[2,2]] + cm_test$table[[1,2]])
+ f1_score = 2 * (precision * recall) / (precision + recall)
+#precision_score <- cm_test$byClass["Pos Pred Value"]
+#recall_score <- cm_test$byClass["Sensitivity"]
+#f1_score <- 2 * (cm_test$byClass["Sensitivity"] * cm_test$byClass["Pos Pred Value"]) / (cm_test$byClass["Sensitivity"] + cm_test$byClass["Pos Pred Value"])
 
 cat("Confusion Matrix:")
 print(cm_test)
@@ -133,7 +134,7 @@ cat("F1 Score: ", f1_score, "\n")
 
 
 # Define the loss matrix
-loss_matrix <- matrix(c(0, 1, 5, 0), nrow = 2, byrow = TRUE)
+loss_matrix <- matrix(c(1, 0, 5, 0), nrow = 2, byrow = TRUE)
 
 # Predict with the loss matrix
 predicted_test_loss <- predict(optimal_tree_model_deviance, newdata = test_data, type = "class", loss.matrix = loss_matrix)
@@ -142,10 +143,13 @@ predicted_test_loss <- predict(optimal_tree_model_deviance, newdata = test_data,
 cm_test_loss <- confusionMatrix(predicted_test_loss, test_data$y)
 
 loss_accuracy_score <- cm_test_loss$overall["Accuracy"]
-loss_precision_score <- cm_test_loss$byClass["Pos Pred Value"]
-loss_recall_score <- cm_test_loss$byClass["Sensitivity"]
-loss_f1_score <- 2 * (cm_test_loss$byClass["Sensitivity"] * cm_test_loss$byClass["Pos Pred Value"]) / (cm_test_loss$byClass["Sensitivity"] + cm_test_loss$byClass["Pos Pred Value"])
+#loss_precision_score <- cm_test_loss$byClass["Pos Pred Value"]
+#loss_recall_score <- cm_test_loss$byClass["Sensitivity"]
+#loss_f1_score <- 2 * (cm_test_loss$byClass["Sensitivity"] * cm_test_loss$byClass["Pos Pred Value"]) / (cm_test_loss$byClass["Sensitivity"] + cm_test_loss$byClass["Pos Pred Value"])
 
+loss_precision <- cm_test_loss$table[[1,1]] / (cm_test_loss$table[[1,1]] + cm_test_loss$table[[2,1]])
+loss_recall <- cm_test_loss$table[[2,2]] / (cm_test_loss$table[[2,2]] + cm_test_loss$table[[1,2]])
+loss_f1_score = 2 * (precision * recall) / (precision + recall)
 
 score_comparsion_df <- data.frame(scores=c("without loss matrix", "with loss matrix"),
                                   accuracy_scores=c(accuracy_score, loss_accuracy_score),
@@ -160,7 +164,7 @@ print(score_comparsion_df)
 logreg_model <- glm(y ~ ., data = train_data, family = binomial())
 
 predicted_test_optimal <- predict(optimal_tree_model_deviance, newdata = test_data, type = "class")
-predicted_test_logreg <- predict(fit_logistic, newdata = test_data, type = "response") > 0.5
+predicted_test_logreg <- predict(logreg_model, newdata = test_data, type = "response") > 0.5
 
 
 # Define the threshold values

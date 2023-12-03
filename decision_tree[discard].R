@@ -38,7 +38,7 @@ plotcp(nodesize_tree_model)
 deviance_tree_model <- rpart(y ~ ., data = train_data, method = "class", control = rpart.control(cp = 0.0005))
 plotcp(deviance_tree_model)
 
-fancyRpartPlot(deviance_tree_model, caption = NULL)
+#fancyRpartPlot(deviance_tree_model, caption = NULL)
 
 # Compute confusion matrices and misclassification rates for each model
 cm_mc_function <- function(model, data) {
